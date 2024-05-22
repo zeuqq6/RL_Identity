@@ -1,5 +1,4 @@
 import numpy as np
-import random
 import gym
 from gym import spaces
 
@@ -19,8 +18,8 @@ class MultiAgentBanditEnv(gym.Env):
         # Define the reward matrix for the prisoner's dilemma
         if reward_matrix is None:
             self.reward_matrix = np.array([
-                [[3, 3], [0, 5]],
-                [[5, 0], [1, 1]]
+                [[3, 0], [5, 1]],
+                [[0, 5], [1, 3]]
             ])
         else:
             self.reward_matrix = reward_matrix
@@ -36,8 +35,11 @@ class MultiAgentBanditEnv(gym.Env):
         
         # Calculate rewards for each agent
         rewards = np.zeros(self.num_agents)
+        
+        # Use appropriate indexing to get scalar values
+        reward_value = self.reward_matrix[actions[0], actions[1]]
         for i in range(self.num_agents):
-            rewards[i] = self.reward_matrix[actions[i]][actions[1-i]]
+            rewards[i] = reward_value
         
         self.state = actions
         
@@ -66,4 +68,3 @@ if __name__ == "__main__":
         obs, rewards, done, info = env.step(actions)
         env.render()
         print(f"Observation: {obs}, Rewards: {rewards}")
- 
