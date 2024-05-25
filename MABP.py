@@ -2,69 +2,104 @@ import numpy as np
 import gym
 from gym import spaces
 
-class MultiAgentBanditEnv(gym.Env):
-    def __init__(self, num_agents=2, num_actions=2, reward_matrix=None):
-        super(MultiAgentBanditEnv, self).__init__()
-        
+class MultiArmedBanditEnv(gym.Env):
+    def __init__(self, num_agents=10):
+        super(MultiArmedBanditEnv, self).__init__()
         self.num_agents = num_agents
-        self.num_actions = num_actions
+        self.action_space = spaces.Discrete(2)  # 0: Not Cooperate, 1: Cooperate
+        self.observation_space = spaces.Box(low=0, high=1, shape=(num_agents,), dtype=np.float32)
         
-        # Action space: each agent chooses an action from 0 to num_actions-1
-        self.action_space = spaces.MultiDiscrete([num_actions] * num_agents)
-        
-        # Observation space: observe the action of the other agent(s)
-        self.observation_space = spaces.MultiDiscrete([num_actions] * (num_agents - 1))
-        
-        # Define the reward matrix for the prisoner's dilemma
-        if reward_matrix is None:
-            self.reward_matrix = np.array([
-                [[3, 0], [5, 1]],
-                [[0, 5], [1, 3]]
-            ])
-        else:
-            self.reward_matrix = reward_matrix
-        
+        self.state = np.zeros(self.num_agents)
         self.reset()
-    
+
     def reset(self):
-        self.state = None
-        return self._get_observation()
-    
+        self.state = np.random.rand(self.num_agents)
+        return self.state
+
     def step(self, actions):
-        assert len(actions) == self.num_agents, "Number of actions must match number of agents."
-        
-        # Calculate rewards for each agent
         rewards = np.zeros(self.num_agents)
+        new_state = np.zeros(self.num_agents)
         
-        # Use appropriate indexing to get scalar values
-        reward_value = self.reward_matrix[actions[0], actions[1]]
+        for i in range(0, self.num_agents, 2):
+            action1 = actions[i]
+            action2 = actions[i+1]
+
+            if action1 == 1 and action2 == 1:
+                rewards[i] = rewards[i+1] = 5
+            elif action1 == 0 and action2 == 0:
+                rewards[i] = rewards[i+1] = 1
+            elif action1 == 1 and action2 == 0:
+                rewards[i] = 0
+                rewards[i+1] = 10
+            else:
+                rewards[i] = 10
+                rewards[i+1] = 0
+            
+            new_state[i] = action1
+            new_state[i+1] = action2
+
+        self.state = np.random.rand(self.num_agents)
+        done = True  # One-step game
+        return self.state, rewards, done, {}
+
+    def render(self, mode='human', close=False):
+        pass
+
+class Agent:
+    def __init__(self, color, cooperation_probability):
+        self.color = color
+        self.cooperation_probability = cooperation_probability
+        self.rewards = []
+
+    def decide(self):
+        return np.random.rand() < self.cooperation_probability
+
+class QLearningAgent:
+    def __init__(self, num_agents, red_coop_prob, blue_coop_prob, learning_rate=0.1, discount_factor=0.99, exploration_rate=1.0, exploration_decay=0.995):
+        self.num_agents = num_agents
+        self.agents = self._initialize_agents(red_coop_prob, blue_coop_prob)
+        self.num_states = 2 ** num_agents
+        self.num_actions = 2 ** num_agents
+        self.q_table = np.zeros((self.num_states, self.num_actions))
+        self.lr = learning_rate
+        self.gamma = discount_factor
+        self.epsilon = exploration_rate
+        self.epsilon_decay = exploration_decay
+
+    def _initialize_agents(self, red_coop_prob, blue_coop_prob):
+        agents = []
         for i in range(self.num_agents):
-            rewards[i] = reward_value
-        
-        self.state = actions
-        
-        return self._get_observation(), rewards, False, {}
-    
-    def _get_observation(self):
-        if self.state is None:
-            return [0] * (self.num_agents - 1)
-        else:
-            return [self.state[i] for i in range(1, self.num_agents)]
-        
-    def render(self, mode='human'):
-        if self.state is None:
-            print("Environment not initialized.")
-        else:
-            print(f"Agent actions: {self.state}")
+            if i < self.num_agents // 2:
+                agents.append(Agent('red', red_coop_prob))
+            else:
+                agents.append(Agent('blue', blue_coop_prob))
+        return agents
 
-# Example usage
-if __name__ == "__main__":
-    env = MultiAgentBanditEnv()
-    obs = env.reset()
-    done = False
+    def choose_action(self, state):
+        if np.random.rand() < self.epsilon:
+            return np.random.randint(0, 2, size=self.num_agents)
+        else:
+            state_idx = self._state_to_index(state)
+            action_idx = np.argmax(self.q_table[state_idx])
+            return self._index_to_actions(action_idx)
 
-    while not done:
-        actions = env.action_space.sample()
-        obs, rewards, done, info = env.step(actions)
-        env.render()
-        print(f"Observation: {obs}, Rewards: {rewards}")
+    def update_q_table(self, state, actions, reward, next_state):
+        state_idx = self._state_to_index(state)
+        next_state_idx = self._state_to_index(next_state)
+        action_idx = self._actions_to_index(actions)
+        
+        # q_predict = self.q_table[state_idx, action_idx]
+        q_target = reward + self.gamma * np.max(self.q_table[next_state_idx])
+        self.q_table[state_idx, action_idx] += self.lr * (q_target)
+
+    def _state_to_index(self, state):
+        return int("".join(map(str, (state >= 0.5).astype(int))), 2)
+
+    def _actions_to_index(self, actions):
+        return int("".join(map(str, actions)), 2)
+
+    def _index_to_actions(self, index):
+        return [int(x) for x in np.binary_repr(index, width=self.num_agents)]
+
+    def decay_epsilon(self):
+        self.epsilon *= self.epsilon_decay
