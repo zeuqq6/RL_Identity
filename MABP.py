@@ -51,9 +51,6 @@ class MultiArmedBanditEnv(gym.Env):
         done = True  # One-step game
         return self.history.flatten(), rewards, done, {}
 
-        done = True  # One-step game
-        return self.history.flatten(), rewards, done, {}
-
     def render(self, mode='human', close=False):
         pass
 
