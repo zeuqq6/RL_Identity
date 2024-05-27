@@ -67,7 +67,7 @@ class Agent:
         return np.random.rand() < self.cooperation_probability
 
 class QLearningAgent:
-    def __init__(self, num_agents, red_coop_prob, blue_coop_prob, history_length = 5, learning_rate=0.1, discount_factor=0.99, exploration_rate=1.0, exploration_decay=0.99, min_epsilon=0.1):
+    def __init__(self, num_agents, red_coop_prob, blue_coop_prob, history_length = 5, learning_rate=0.1, discount_factor=0.95, exploration_rate=1.0, exploration_decay=0.99, min_epsilon=0.1):
         self.num_agents = num_agents
         self.history_length = history_length
         self.agents = self._initialize_agents(red_coop_prob, blue_coop_prob)
