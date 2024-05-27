@@ -20,13 +20,14 @@ class MultiArmedBanditEnv(gym.Env):
         rewards = np.zeros(self.num_agents)
         new_state = np.zeros(self.num_agents)
         
+        # iterate through pairs of agents to evaluate their actions
         for i in range(0, self.num_agents, 2):
             action1 = actions[i]
             action2 = actions[i+1]
 
-            if action1 == 1 and action2 == 1:
+            if action1 == 1 and action2 == 1: #if  both cooperate
                 rewards[i] = rewards[i+1] = 5
-            elif action1 == 0 and action2 == 0:
+            elif action1 == 0 and action2 == 0: # if neither cooperate
                 rewards[i] = rewards[i+1] = 1
             elif action1 == 1 and action2 == 0:
                 rewards[i] = 0
@@ -101,5 +102,6 @@ class QLearningAgent:
     def _index_to_actions(self, index):
         return [int(x) for x in np.binary_repr(index, width=self.num_agents)]
 
+    # reduces the exploration rate over time; shift from exploration to exploitation
     def decay_epsilon(self):
         self.epsilon *= self.epsilon_decay
