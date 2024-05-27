@@ -3,18 +3,23 @@ import gym
 from gym import spaces
 
 class MultiArmedBanditEnv(gym.Env):
-    def __init__(self, num_agents=10):
+    def __init__(self, num_agents=10, history_length = 5):
         super(MultiArmedBanditEnv, self).__init__()
         self.num_agents = num_agents
+        self.history_length = history_length
         self.action_space = spaces.Discrete(2)  # 0: Not Cooperate, 1: Cooperate
-        self.observation_space = spaces.Box(low=0, high=1, shape=(num_agents,), dtype=np.float32)
+        self.observation_space = spaces.Box(low=0, high=1, shape=(history_length * num_agents,), dtype=np.float32)
         
         self.state = np.zeros(self.num_agents)
+        self.history = np.zeroes((history_length, num_agents))
         self.reset()
 
     def reset(self):
         self.state = np.random.rand(self.num_agents)
-        return self.state
+         # initialize history with the current state repeated
+        self.history = np.tile(self.state, (self.history_length, 1))
+        return self.history.flatten()
+        # return self.state
 
     def step(self, actions):
         rewards = np.zeros(self.num_agents)
@@ -39,9 +44,15 @@ class MultiArmedBanditEnv(gym.Env):
             new_state[i] = action1
             new_state[i+1] = action2
 
-        self.state = np.random.rand(self.num_agents)
+        # self.state = np.random.rand(self.num_agents)
+        # update history
+        self.history = np.roll(self.history, -1, axis=0)
+        self.history[-1, :] = actions
         done = True  # One-step game
-        return self.state, rewards, done, {}
+        return self.history.flatten(), rewards, done, {}
+
+        done = True  # One-step game
+        return self.history.flatten(), rewards, done, {}
 
     def render(self, mode='human', close=False):
         pass
@@ -56,16 +67,18 @@ class Agent:
         return np.random.rand() < self.cooperation_probability
 
 class QLearningAgent:
-    def __init__(self, num_agents, red_coop_prob, blue_coop_prob, learning_rate=0.1, discount_factor=0.99, exploration_rate=1.0, exploration_decay=0.995):
+    def __init__(self, num_agents, red_coop_prob, blue_coop_prob, history_length = 5, learning_rate=0.1, discount_factor=0.99, exploration_rate=1.0, exploration_decay=0.99, min_epsilon=0.1):
         self.num_agents = num_agents
+        self.history_length = history_length
         self.agents = self._initialize_agents(red_coop_prob, blue_coop_prob)
-        self.num_states = 2 ** num_agents
+        self.num_states = 2 ** (num_agents * history_length)
         self.num_actions = 2 ** num_agents
         self.q_table = np.zeros((self.num_states, self.num_actions))
         self.lr = learning_rate
         self.gamma = discount_factor
         self.epsilon = exploration_rate
         self.epsilon_decay = exploration_decay
+        self.min_epsilon = min_epsilon
 
     def _initialize_agents(self, red_coop_prob, blue_coop_prob):
         agents = []
@@ -89,9 +102,14 @@ class QLearningAgent:
         next_state_idx = self._state_to_index(next_state)
         action_idx = self._actions_to_index(actions)
         
+        # normalize reward to improve stability
+        normalized_reward = (reward - reward.mean()) / (reward.std() + 1e-8)
+        
+        q_target = normalized_reward + self.gamma * np.max(self.q_table[next_state_idx])
+        self.q_table[state_idx, action_idx] += self.lr * (q_target - self.q_table[state_idx, action_idx])
         # q_predict = self.q_table[state_idx, action_idx]
-        q_target = reward + self.gamma * np.max(self.q_table[next_state_idx])
-        self.q_table[state_idx, action_idx] += self.lr * (q_target)
+        # q_target = reward + self.gamma * np.max(self.q_table[next_state_idx])
+        # self.q_table[state_idx, action_idx] += self.lr * (q_target)
 
     def _state_to_index(self, state):
         return int("".join(map(str, (state >= 0.5).astype(int))), 2)
@@ -104,4 +122,5 @@ class QLearningAgent:
 
     # reduces the exploration rate over time; shift from exploration to exploitation
     def decay_epsilon(self):
-        self.epsilon *= self.epsilon_decay
+        self.epsilon = max(self.min_epsilon, self.epsilon * self.epsilon_decay)
+        # self.epsilon *= self.epsilon_decay
