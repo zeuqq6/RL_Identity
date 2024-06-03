@@ -11,7 +11,7 @@ class MultiArmedBanditEnv(gym.Env):
         self.observation_space = spaces.Box(low=0, high=1, shape=(history_length * num_agents,), dtype=np.float32)
         
         self.state = np.zeros(self.num_agents)
-        self.history = np.zeroes((history_length, num_agents))
+        self.history = np.zeros((history_length, num_agents))
         self.reset()
 
     def reset(self):
@@ -64,18 +64,27 @@ class Agent:
         return np.random.rand() < self.cooperation_probability
 
 class QLearningAgent:
-    def __init__(self, num_agents, red_coop_prob, blue_coop_prob, history_length = 5, learning_rate=0.1, discount_factor=0.95, exploration_rate=1.0, exploration_decay=0.99, min_epsilon=0.1):
+    def __init__(self, num_agents, red_coop_prob, blue_coop_prob, history_length=10, learning_rate=0.1, discount_factor=0.95, exploration_rate=1.0, exploration_decay=0.99, min_epsilon=0.1):
         self.num_agents = num_agents
         self.history_length = history_length
         self.agents = self._initialize_agents(red_coop_prob, blue_coop_prob)
-        self.num_states = 2 ** (num_agents * history_length)
-        self.num_actions = 2 ** num_agents
-        self.q_table = np.zeros((self.num_states, self.num_actions))
         self.lr = learning_rate
         self.gamma = discount_factor
         self.epsilon = exploration_rate
         self.epsilon_decay = exploration_decay
         self.min_epsilon = min_epsilon
+
+                # Limit history length to 10
+        if self.history_length > 10:
+            raise ValueError("History length must be 10 or less to manage Q-table size.")
+
+        # Calculate number of states and actions with limited history
+        self.num_states = 2 ** (self.num_agents * self.history_length)
+        self.num_actions = 2 ** self.num_agents
+        
+        print(f"num_states: {self.num_states}, num_actions: {self.num_actions}")
+        
+        self.q_table = np.zeros((self.num_states, self.num_actions))
 
     def _initialize_agents(self, red_coop_prob, blue_coop_prob):
         agents = []
