@@ -1,0 +1,67 @@
+---
+title: "Untitled"
+output: pdf_document
+date: "2024-06-09"
+---
+
+```{r setup, include=FALSE}
+library(ggplot2)
+# plot 1
+mean <- c(301.53, 250.93)
+  sd <- c(16.98, 22.83)
+  se <- sd/sqrt(30)
+  group <- c("Control (No Identity)","With Identity Groups")
+df <- as.data.frame(cbind(group,mean,sd,se))
+df$mean <- as.numeric(df$mean)
+df$sd <- as.numeric(df$sd)
+df$se <- as.numeric(df$se)
+
+ggplot(df, aes(x = group, y = mean)) +
+  geom_bar(stat = "identity", fill = "skyblue", alpha = 0.8, width = 0.35) +
+  geom_errorbar(aes(ymin = mean - se, ymax = mean + se), width = 0.05) +
+  labs(
+    title = "",
+    x = "Condition",
+    y = "Mean Total Rewards"
+  ) +
+  theme_classic()
+
+# plot 2
+mean <- c(301.53, 142.7, 99.8)
+  sd <- c(16.98, 18.9, 24.5)
+  se <- sd/sqrt(30)
+  group <- c("Control","In-Group", "Out-Group")
+df <- as.data.frame(cbind(group,mean,sd,se))
+df$mean <- as.numeric(df$mean)
+df$sd <- as.numeric(df$sd)
+df$se <- as.numeric(df$se)
+df$group <- factor(df$group, levels = c("Control","In-Group", "Out-Group"))
+
+ggplot(df, aes(x = group, y = mean)) +
+  geom_bar(stat = "identity", fill = c("skyblue", "#E69F00", "#E69F00"), alpha = 0.8, width = 0.5) +
+  geom_errorbar(aes(ymin = mean - se, ymax = mean + se), width = 0.05) +
+  labs(
+    title = "",
+    x = "Condition",
+    y = "Mean Total Rewards for Agents")+ theme_classic() 
+
+# plot 3
+mean <- c(276.933333, 190.933333, 368.666667)
+  sd <- c(85.037490, 21.500495, 33.662968)
+  se <- sd/sqrt(30)
+  group <- c("Control","In-Group", "Out-Group")
+df <- as.data.frame(cbind(group,mean,sd,se))
+df$mean <- as.numeric(df$mean)
+df$sd <- as.numeric(df$sd)
+df$se <- as.numeric(df$se)
+df$group <- factor(df$group, levels = c("Control","In-Group", "Out-Group"))
+
+ggplot(df, aes(x = group, y = mean)) +
+  geom_bar(stat = "identity", fill = c("skyblue", "#E69F00", "#E69F00"), alpha = 0.8, width = 0.35) +
+  geom_errorbar(aes(ymin = mean - se, ymax = mean + se), width = 0.05) +
+  labs(
+    title = "",
+    x = "Condition",
+    y = "Mean Total Rewards for Agents"
+  ) + theme_classic() 
+```
